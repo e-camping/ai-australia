@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Similarity Ranking - CodeHS Style Exercise</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .progress-indicator {
+            background: #34495e;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .progress-indicator.incomplete {
+            background: #e74c3c;
+        }
+
+        .progress-indicator.partial {
+            background: #f39c12;
+        }
+
+        .progress-indicator.complete {
+            background: #27ae60;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .instructions-panel {
+            width: 400px;
+            background: white;
+            padding: 30px;
+            overflow-y: auto;
+            border-right: 2px solid #e0e0e0;
+        }
+
+        .instructions-panel h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .instructions-panel h3 {
+            color: #34495e;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .instructions-panel p, .instructions-panel li {
+            color: #555;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+
+        .instructions-panel ul, .instructions-panel ol {
+            padding-left: 25px;
+        }
+
+        .instructions-panel code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e74c3c;
+            font-size: 13px;
+        }
+
+        .instructions-panel pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+
+        .test-cases-preview {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+
+        .test-case-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-left: 3px solid #3498db;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+        }
+
+        .editor-header {
+            background: #2d2d2d;
+            padding: 12px 20px;
+            color: #ccc;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-title {
+            font-weight: 600;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #229954;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #2980b9;
+        }
+
+        .btn-hint {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-hint:hover {
+            background: #e67e22;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+
+        .results-panel {
+            background: #2d2d2d;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border-top: 2px solid #3e3e3e;
+        }
+
+        .results-header {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-result {
+            background: #1e1e1e;
+            margin: 10px 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border-left: 4px solid #3498db;
+        }
+
+        .test-result.passed {
+            border-left-color: #27ae60;
+        }
+
+        .test-result.failed {
+            border-left-color: #e74c3c;
+        }
+
+        .test-result-header {
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            background: #252525;
+        }
+
+        .test-result-header:hover {
+            background: #2a2a2a;
+        }
+
+        .test-title {
+            color: #ecf0f1;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .test-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .test-status.passed {
+            background: #27ae60;
+            color: white;
+        }
+
+        .test-status.failed {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .test-details {
+            padding: 15px;
+            color: #bbb;
+            font-size: 13px;
+            line-height: 1.6;
+            display: none;
+        }
+
+        .test-details.expanded {
+            display: block;
+        }
+
+        .test-details-row {
+            margin: 8px 0;
+        }
+
+        .test-details-label {
+            color: #999;
+            font-weight: 600;
+        }
+
+        .test-details code {
+            background: #2c3e50;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #3498db;
+        }
+
+        .word-list {
+            background: #2c3e50;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #ecf0f1;
+        }
+
+        .error-message {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .success-message {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .hint-box {
+            background: #f39c12;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .hint-box strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .accuracy-bar {
+            width: 100%;
+            height: 20px;
+            background: #34495e;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .accuracy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #f39c12, #27ae60);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .loading {
+            color: #3498db;
+            font-style: italic;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Word Similarity Ranking Exercise</h1>
+        <div class="progress-indicator incomplete" id="progressIndicator">
+            <span id="progressText">0/5 Tests Passed</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Instructions Panel -->
+        <div class="instructions-panel">
+            <h2>Instructions</h2>
+            <div id="instructions">
+                <p>Loading exercise...</p>
+            </div>
+
+            <h3>Test Cases</h3>
+            <div class="test-cases-preview" id="testCasesPreview">
+                <p>Loading test cases...</p>
+            </div>
+
+            <h3>Available Helper Functions</h3>
+            <pre>compute_char_vector(word)
+  Returns: dict of {char: frequency}
+
+cosine_similarity(vec1, vec2)
+  Returns: float (0 to 1)</pre>
+
+            <h3>Need Help?</h3>
+            <p>Click the "Get Hint" button in the editor to receive step-by-step guidance.</p>
+        </div>
+
+        <!-- Editor Container -->
+        <div class="editor-container">
+            <div class="editor-header">
+                <span class="editor-title">solution.py</span>
+                <div class="button-group">
+                    <button class="btn-hint" onclick="getHint()">Get Hint</button>
+                    <button class="btn-secondary" onclick="runCode()">Run Code</button>
+                    <button class="btn-primary" onclick="submitSolution()">Submit</button>
+                </div>
+            </div>
+
+            <textarea id="codeEditor" spellcheck="false">def compute_embedding(word):
+    """
+    Create a semantic embedding for a word using sentence transformers.
+
+    Args:
+        word (str): The word to convert to embedding
+
+    Returns:
+        numpy array: Neural embedding vector (captures meaning)
+
+    Available:
+        - model: SentenceTransformer model (USE THIS!)
+        - np: numpy
+
+    Hint: Use model.encode([word])[0] to get the embedding
+
+    This captures SEMANTIC meaning:
+    - "mouse" and "computer" are related (computer peripheral)
+    - "piano" and "guitar" are related (musical instruments)
+    """
+    # TODO: Get embedding using model.encode()
+    pass
+
+
+def rank_words_by_similarity(target, words):
+    """
+    Rank words by SEMANTIC similarity to target using neural embeddings.
+
+    Args:
+        target (str): The target word to compare against
+        words (list): List of words to rank
+
+    Returns:
+        dict: Dictionary with {word: rank} where rank 1 = most similar
+
+    Available:
+        - compute_embedding(word): Your function above!
+        - model: SentenceTransformer model
+        - np: numpy for cosine similarity
+
+    Algorithm:
+        1. Get target embedding
+        2. For each word, get its embedding
+        3. Compute cosine similarity: np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
+        4. Sort by similarity (highest first)
+        5. Return {word: rank} dictionary
+
+    Example output for "computer":
+        {"mouse": 1, "keyboard": 2, ...}  # Related words rank higher!
+    """
+    # TODO: Implement semantic ranking
+    pass
+</textarea>
+
+            <div class="results-panel" id="resultsPanel" style="display: none;">
+                <div class="results-header">
+                    <span>Test Results</span>
+                    <span id="resultsScore"></span>
+                </div>
+                <div id="testResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let currentHintLevel = 0;
+        let exerciseData = null;
+
+        // Load exercise on page load
+        async function loadExercise() {
+            try {
+                const response = await fetch(`${API_URL}/get_exercise`);
+                exerciseData = await response.json();
+
+                // Display instructions
+                document.getElementById('instructions').innerHTML =
+                    exerciseData.instructions.split('\n').map(line => {
+                        if (line.startsWith('# ')) return `<h2>${line.substring(2)}</h2>`;
+                        if (line.startsWith('## ')) return `<h3>${line.substring(3)}</h3>`;
+                        if (line.startsWith('- ')) return `<li>${line.substring(2)}</li>`;
+                        if (line.match(/^\d+\./)) return `<li>${line.substring(line.indexOf('.') + 1)}</li>`;
+                        return `<p>${line}</p>`;
+                    }).join('');
+
+                // Display test cases
+                const testCasesHTML = exerciseData.test_cases.map((tc, i) => `
+                    <div class="test-case-item">
+                        Test ${i + 1}: ${tc.description}
+                    </div>
+                `).join('');
+                document.getElementById('testCasesPreview').innerHTML = testCasesHTML;
+
+            } catch (error) {
+                console.error('Error loading exercise:', error);
+                document.getElementById('instructions').innerHTML =
+                    '<p style="color: red;">Error loading exercise. Make sure the server is running.</p>';
+            }
+        }
+
+        async function submitSolution() {
+            const code = document.getElementById('codeEditor').value;
+            const resultsPanel = document.getElementById('resultsPanel');
+            const testResults = document.getElementById('testResults');
+
+            // Show loading
+            resultsPanel.style.display = 'block';
+            testResults.innerHTML = '<p class="loading">Running tests...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/submit_solution`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+
+                // Update progress indicator
+                updateProgress(data.passed, data.total);
+
+                // Display results
+                if (data.status === 'error') {
+                    testResults.innerHTML = `
+                        <div class="error-message">
+                            <strong>Error:</strong> ${data.message}
+                            ${data.traceback ? `<pre style="margin-top: 10px; font-size: 11px;">${data.traceback}</pre>` : ''}
+                        </div>
+                    `;
+                } else {
+                    let resultsHTML = '';
+
+                    if (data.status === 'success') {
+                        resultsHTML += `
+                            <div class="success-message">
+                                🎉 All tests passed! Excellent work!
+                            </div>
+                        `;
+                    }
+
+                    // Show test results
+                    data.test_results.forEach(test => {
+                        const passed = test.passed;
+                        const statusClass = passed ? 'passed' : 'failed';
+                        const statusText = passed ? 'PASSED' : 'FAILED';
+
+                        resultsHTML += `
+                            <div class="test-result ${statusClass}">
+                                <div class="test-result-header" onclick="toggleTestDetails(${test.test_number})">
+                                    <span class="test-title">Test ${test.test_number}: ${test.description}</span>
+                                    <span class="test-status ${statusClass}">${statusText}</span>
+                                </div>
+                                <div class="test-details" id="testDetails${test.test_number}">
+                                    ${test.error ? `
+                                        <div class="test-details-row">
+                                            <span class="test-details-label">Error:</span> ${test.error}
+                                        </div>
+                                        ${test.traceback ? `<pre style="color: #e74c3c; font-size: 11px; margin-top: 5px;">${test.traceback}</pre>` : ''}
+                                    ` : `
+                                        <div class="test-details-row">
+                                            <span class="test-details-label">Target Word:</span> <code>${test.target}</code>
+                                        </div>
+                                        ${test.exact_accuracy !== undefined ? `
+                                            <div class="test-details-row">
+                                                <span class="test-details-label">Exact Rank Matches:</span> ${test.exact_accuracy}%
+                                                <div class="accuracy-bar">
+                                                    <div class="accuracy-fill" style="width: ${test.exact_accuracy}%">
+                                                        ${test.exact_accuracy}%
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="test-details-row">
+                                                <span class="test-details-label">Rank Closeness:</span> ${test.rank_closeness}% (avg diff: ${test.avg_rank_diff} positions)
+                                            </div>
+                                            <div class="test-details-row">
+                                                <span class="test-details-label">Top 10 Accuracy:</span> ${test.top_10_accuracy}%
+                                            </div>
+                                            <div class="test-details-row">
+                                                <span class="test-details-label">Your Top 5:</span>
+                                                <div class="word-list">${test.your_top_5.join(', ')}</div>
+                                            </div>
+                                            <div class="test-details-row">
+                                                <span class="test-details-label">Expected Top 5:</span>
+                                                <div class="word-list">${test.expected_top_5.join(', ')}</div>
+                                            </div>
+                                        ` : ''}
+                                    `}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    // Show console output if any
+                    if (data.console_output && data.console_output.trim()) {
+                        resultsHTML += `
+                            <div class="console-output">
+                                Console Output:\n${data.console_output}
+                            </div>
+                        `;
+                    }
+
+                    testResults.innerHTML = resultsHTML;
+                    document.getElementById('resultsScore').textContent = `${data.passed}/${data.total} Passed`;
+                }
+
+            } catch (error) {
+                testResults.innerHTML = `
+                    <div class="error-message">
+                        Network error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function runCode() {
+            submitSolution();
+        }
+
+        async function getHint() {
+            currentHintLevel = (currentHintLevel % 5) + 1;
+
+            try {
+                const response = await fetch(`${API_URL}/get_hint`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ level: currentHintLevel })
+                });
+
+                const data = await response.json();
+
+                const resultsPanel = document.getElementById('resultsPanel');
+                const testResults = document.getElementById('testResults');
+
+                resultsPanel.style.display = 'block';
+                testResults.innerHTML = `
+                    <div class="hint-box">
+                        <strong>Hint ${currentHintLevel}/5:</strong>
+                        ${data.hint.replace(/\n/g, '<br>')}
+                    </div>
+                    <p style="color: #bbb; font-size: 12px; margin-top: 10px;">
+                        Click "Get Hint" again for the next hint.
+                    </p>
+                `;
+
+            } catch (error) {
+                console.error('Error getting hint:', error);
+            }
+        }
+
+        function toggleTestDetails(testNumber) {
+            const details = document.getElementById(`testDetails${testNumber}`);
+            details.classList.toggle('expanded');
+        }
+
+        function updateProgress(passed, total) {
+            const indicator = document.getElementById('progressIndicator');
+            const progressText = document.getElementById('progressText');
+
+            progressText.textContent = `${passed}/${total} Tests Passed`;
+
+            if (passed === 0) {
+                indicator.className = 'progress-indicator incomplete';
+            } else if (passed === total) {
+                indicator.className = 'progress-indicator complete';
+            } else {
+                indicator.className = 'progress-indicator partial';
+            }
+        }
+
+        // Load exercise on page load
+        loadExercise();
+    </script>
+</body>
+</html>

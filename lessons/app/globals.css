@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom styles for lesson components */
+.lesson-container {
+  @apply max-w-7xl mx-auto px-4 py-8;
+}
+
+.code-example {
+  @apply bg-gray-900 rounded-lg p-4 my-4 overflow-x-auto;
+}
+
+.continue-btn {
+  @apply bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold;
+}
+
+.exercise-container {
+  @apply border border-gray-300 dark:border-gray-700 rounded-lg p-6 my-6;
+}
+
+.lesson-nav {
+  @apply flex justify-between items-center mt-8 pt-8 border-t border-gray-300 dark:border-gray-700;
+}

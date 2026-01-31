@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Similarity Game - Hot or Cold</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+            grid-column: 1 / -1;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .game-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button.secondary {
+            background: #95a5f0;
+        }
+
+        button.secondary:hover {
+            background: #7b8eeb;
+        }
+
+        button.danger {
+            background: #e74c3c;
+        }
+
+        button.danger:hover {
+            background: #c0392b;
+        }
+
+        .result {
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+        .result.hot {
+            background: #ffe0e0;
+            color: #c0392b;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .result.warm {
+            background: #fff3e0;
+            color: #e67e22;
+            border-left: 4px solid #f39c12;
+        }
+
+        .result.cold {
+            background: #e3f2fd;
+            color: #2980b9;
+            border-left: 4px solid #3498db;
+        }
+
+        .result.correct {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .code-editor {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .editor-tabs {
+            display: flex;
+            gap: 5px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .code-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .code-info code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .word-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .word-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 4px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .word-item:nth-child(1) { background: #d4edda; }
+        .word-item:nth-child(2) { background: #d9f2dd; }
+        .word-item:nth-child(3) { background: #e0f7e4; }
+
+        .rank {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .similarity {
+            color: #666;
+        }
+
+        .output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            min-height: 100px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .guess-history {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .guess-item {
+            padding: 8px;
+            margin: 4px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Word Similarity Game - Hot or Cold</h1>
+
+        <!-- Game Panel -->
+        <div class="panel">
+            <h2>Play the Game</h2>
+            <div class="game-section">
+                <div class="input-group">
+                    <input type="text" id="targetInput" placeholder="Set target word (e.g., music, house, dance)">
+                    <button onclick="setTarget()">Set Target</button>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" id="guessInput" placeholder="Enter your guess (5-letter word)" maxlength="5">
+                    <button onclick="makeGuess()">Guess</button>
+                    <button class="secondary" onclick="showAllRankings()">Show All</button>
+                </div>
+
+                <div id="result"></div>
+
+                <div class="guess-history" id="guessHistory"></div>
+
+                <div class="word-list" id="wordList" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Code Editor Panel -->
+        <div class="panel">
+            <h2>✏️ Code Your Own Functions</h2>
+            <div class="code-editor">
+                <div class="editor-tabs">
+                    <button class="tab active" onclick="switchTab('similarity')">Similarity Function</button>
+                    <button class="tab" onclick="switchTab('filter')">Filter Function</button>
+                </div>
+
+                <!-- Similarity Function Editor -->
+                <div id="similarityEditor" class="editor-content">
+                    <div class="code-info">
+                        Write a function that computes similarity between two words.<br>
+                        <strong>Function signature:</strong> <code>def compute_similarity(word: str, target: str) -> float</code><br>
+                        <strong>Available:</strong> <code>math</code>, <code>Counter</code>, <code>WORDS</code>, <code>word_vectors</code>, <code>levenshtein_distance</code>, <code>cosine_similarity</code>
+                    </div>
+                    <textarea id="similarityCode">def compute_similarity(word: str, target: str) -> float:
+    """
+    Compute similarity between word and target.
+    Returns a float between 0 and 1 (higher = more similar)
+
+    Available:
+    - math: math module
+    - Counter: collections.Counter
+    - WORDS: list of all 200 words
+    - word_vectors: pre-computed character vectors
+    - levenshtein_distance(s1, s2): edit distance function
+    - cosine_similarity(vec1, vec2): cosine similarity
+    - compute_char_vector(word): create character frequency vector
+    """
+    # Example: Use edit distance
+    edit_dist = levenshtein_distance(word, target)
+    max_len = max(len(word), len(target))
+    similarity = 1.0 - (edit_dist / max_len)
+
+    return similarity</textarea>
+                    <div class="button-group">
+                        <button onclick="submitCode('compute_similarity')">Run & Test</button>
+                        <button class="danger" onclick="resetCode('compute_similarity')">Reset to Default</button>
+                    </div>
+                </div>
+
+                <!-- Filter Function Editor -->
+                <div id="filterEditor" class="editor-content" style="display: none;">
+                    <div class="code-info">
+                        Write a function that filters the word list.<br>
+                        <strong>Function signature:</strong> <code>def filter_words(words: List[str], target: str) -> List[str]</code><br>
+                        <strong>Available:</strong> <code>math</code>, <code>Counter</code>, <code>WORDS</code>, <code>word_vectors</code>, <code>levenshtein_distance</code>, <code>cosine_similarity</code>
+                    </div>
+                    <textarea id="filterCode">def filter_words(words, target):
+    """
+    Filter the word list based on custom criteria.
+    Returns a list of words to include in the game.
+
+    Available:
+    - math: math module
+    - Counter: collections.Counter
+    - WORDS: list of all 200 words
+    - word_vectors: pre-computed character vectors
+    - levenshtein_distance(s1, s2): edit distance function
+    - cosine_similarity(vec1, vec2): cosine similarity
+
+    Example: Filter words that start with the same letter
+    """
+    # Example: only include words starting with same letter as target
+    # return [w for w in words if w[0] == target[0]]
+
+    # Default: return all words
+    return words</textarea>
+                    <div class="button-group">
+                        <button onclick="submitCode('filter_words')">Run & Test</button>
+                        <button class="danger" onclick="resetCode('filter_words')">Reset to Default</button>
+                    </div>
+                </div>
+
+                <div id="codeStatus"></div>
+                <div class="output" id="codeOutput">Code output will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let currentTarget = 'music';
+        let guessHistory = [];
+
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Show/hide editors
+            if (tab === 'similarity') {
+                document.getElementById('similarityEditor').style.display = 'block';
+                document.getElementById('filterEditor').style.display = 'none';
+            } else {
+                document.getElementById('similarityEditor').style.display = 'none';
+                document.getElementById('filterEditor').style.display = 'block';
+            }
+        }
+
+        async function setTarget() {
+            const target = document.getElementById('targetInput').value.toLowerCase().trim();
+            if (!target) {
+                alert('Please enter a target word');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/set_target`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target })
+                });
+
+                const data = await response.json();
+                currentTarget = data.target;
+                guessHistory = [];
+                document.getElementById('guessHistory').innerHTML = '';
+                document.getElementById('result').innerHTML = `<div class="result cold">Target set to: <strong>${target}</strong>. Start guessing!</div>`;
+                document.getElementById('wordList').style.display = 'none';
+            } catch (error) {
+                alert('Error setting target: ' + error.message);
+            }
+        }
+
+        async function makeGuess() {
+            const guess = document.getElementById('guessInput').value.toLowerCase().trim();
+            if (!guess || guess.length !== 5) {
+                alert('Please enter a 5-letter word');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/check_guess`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ guess })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(error.error);
+                    return;
+                }
+
+                const data = await response.json();
+                displayGuessResult(data);
+                addToHistory(data);
+                document.getElementById('guessInput').value = '';
+
+            } catch (error) {
+                alert('Error making guess: ' + error.message);
+            }
+        }
+
+        function displayGuessResult(data) {
+            const resultDiv = document.getElementById('result');
+            const similarity = (data.similarity * 100).toFixed(1);
+            const rank = data.rank;
+            const total = data.total;
+
+            let cssClass = 'cold';
+            let temperature = '❄️ COLD';
+
+            if (data.is_correct) {
+                cssClass = 'correct';
+                resultDiv.innerHTML = `
+                    <div class="result ${cssClass}">
+                        🎉 <strong>CORRECT!</strong> You found the word: <strong>${data.guess}</strong>
+                    </div>
+                `;
+                return;
+            }
+
+            if (rank <= 10) {
+                cssClass = 'hot';
+                temperature = '🔥 HOT!';
+            } else if (rank <= 50) {
+                cssClass = 'warm';
+                temperature = '🌡️ WARM';
+            }
+
+            resultDiv.innerHTML = `
+                <div class="result ${cssClass}">
+                    ${temperature}<br>
+                    <strong>${data.guess}</strong> - Similarity: ${similarity}%<br>
+                    Rank: #${rank} out of ${total}
+                </div>
+            `;
+        }
+
+        function addToHistory(data) {
+            guessHistory.push(data);
+            const historyDiv = document.getElementById('guessHistory');
+            const similarity = (data.similarity * 100).toFixed(1);
+
+            const guessItem = document.createElement('div');
+            guessItem.className = 'guess-item';
+            guessItem.innerHTML = `
+                <span><strong>${data.guess}</strong> - ${similarity}%</span>
+                <span>Rank: #${data.rank}</span>
+            `;
+            historyDiv.insertBefore(guessItem, historyDiv.firstChild);
+        }
+
+        async function showAllRankings() {
+            try {
+                const response = await fetch(`${API_URL}/rank_words`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target: currentTarget })
+                });
+
+                const data = await response.json();
+                displayWordList(data.ranked_words);
+            } catch (error) {
+                alert('Error fetching rankings: ' + error.message);
+            }
+        }
+
+        function displayWordList(rankedWords) {
+            const wordListDiv = document.getElementById('wordList');
+            wordListDiv.style.display = 'block';
+            wordListDiv.innerHTML = '<h3>All Words Ranked by Similarity</h3>';
+
+            rankedWords.forEach(item => {
+                const wordItem = document.createElement('div');
+                wordItem.className = 'word-item';
+                const similarity = (item.similarity * 100).toFixed(1);
+                wordItem.innerHTML = `
+                    <span><span class="rank">#${item.rank}</span> ${item.word}</span>
+                    <span class="similarity">${similarity}%</span>
+                `;
+                wordListDiv.appendChild(wordItem);
+            });
+        }
+
+        async function submitCode(functionName) {
+            const code = functionName === 'compute_similarity'
+                ? document.getElementById('similarityCode').value
+                : document.getElementById('filterCode').value;
+
+            const statusDiv = document.getElementById('codeStatus');
+            const outputDiv = document.getElementById('codeOutput');
+
+            statusDiv.innerHTML = '<div class="status-message">Running code...</div>';
+            outputDiv.textContent = '';
+
+            try {
+                const response = await fetch(`${API_URL}/submit_code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, function_name: functionName })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    statusDiv.innerHTML = `<div class="status-message success">${data.message}</div>`;
+                    outputDiv.textContent = data.output || 'Code executed successfully!';
+                } else {
+                    statusDiv.innerHTML = `<div class="status-message error">${data.message}</div>`;
+                    outputDiv.textContent = data.traceback || data.message;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status-message error">Error: ${error.message}</div>`;
+                outputDiv.textContent = error.stack;
+            }
+        }
+
+        async function resetCode(functionName) {
+            try {
+                const response = await fetch(`${API_URL}/reset_code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ function_name: functionName })
+                });
+
+                const data = await response.json();
+                document.getElementById('codeStatus').innerHTML =
+                    `<div class="status-message success">${data.message}</div>`;
+            } catch (error) {
+                alert('Error resetting code: ' + error.message);
+            }
+        }
+
+        // Allow Enter key to submit guesses
+        document.getElementById('guessInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') makeGuess();
+        });
+
+        document.getElementById('targetInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') setTarget();
+        });
+    </script>
+</body>
+</html>
