@@ -33,3 +33,5 @@ __pycache__/
 *.so
 .Python
 /.git
+.vercel
+.env*.local
