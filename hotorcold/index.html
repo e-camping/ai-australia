@@ -1,51 +1,52 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hot or Cold</title>
-    <style>
-      .login-btn {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        background: #089E6F;
-        color: white;
-        padding: 10px 20px;
-        font-size: 1.2rem;
-        border-radius: 10px;
-        text-decoration: none;
-        transition: transform 0.3s ease;
-      }
-      .login-btn:hover {
-        transform: translateY(-2px);
-      }
-      .qotd {
-        margin: 0;
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        text-align: center;
-        color: white;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <a href="/login" class="login-btn">Sign In with Google</a>
-    <script type="module" src="src/main.tsx"></script>
-    <h1 class="qotd"></h1>
-    <script>
-      fetch('/api/quote')
-        .then(response => response.json())
-        .then(data => {
-          if (data.output) {
-            document.querySelector('.qotd').textContent = data.output;
-          }
-        })
-        .catch(err => console.error('Failed to fetch quote:', err));
-    </script>
-  </body>
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="vite.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Hot or Cold</title>
+        <style>
+            .login-btn {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                background: #089e6f;
+                color: white;
+                padding: 10px 20px;
+                font-size: 1.2rem;
+                border-radius: 10px;
+                text-decoration: none;
+                transition: transform 0.3s ease;
+            }
+            .login-btn:hover {
+                transform: translateY(-2px);
+            }
+            .qotd {
+                margin: 0;
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                text-align: left;
+                color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+        <a href="/login" class="login-btn">Sign In with Google</a>
+        <script type="module" src="src/main.tsx"></script>
+        <h1 class="qotd"></h1>
+        <script>
+            fetch("/api/quote")
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.quote) {
+                        document.querySelector(".qotd").textContent =
+                            data.quote;
+                    }
+                })
+                .catch((err) => console.error("Failed to fetch quote:", err));
+        </script>
+    </body>
 </html>

@@ -10,7 +10,7 @@ quotes = [
     "Get busy living or get busy dying. - Stephen King",
     "You only live once, but if you do it right, once is enough. - Mae West",
     "Many of life's failures are people who did not realize how close they were to success when they gave up. - Thomas A. Edison",
-    "If you want to live a happy life, tie it to a goal, not to people or things. - Albert Einstein"
+    "If you want to live a happy life, tie it to a goal, not to people or things. - Albert Einstein",
 ]
 
 print(choice(quotes))
