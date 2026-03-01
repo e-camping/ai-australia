@@ -13,7 +13,6 @@ import {
 } from "../utils/gameLogic";
 import GuessInput from "./GuessInput";
 import GuessRankings from "./GuessRankings";
-import WordList from "./WordList";
 
 interface GameBoardProps {
   onReset: () => void;
@@ -91,9 +90,7 @@ export default function GameBoard({ onReset }: GameBoardProps) {
           <div className="spinner"></div>
           <p>🧠 Computing word rankings...</p>
           <p className="loading-subtext">
-            Analyzing semantic similarity for 3,600+ words using AI...
-            <br />
-            This takes ~10-15 seconds (one-time per game)
+            Fetching semantic similarity rankings from server...
           </p>
         </div>
       </div>
@@ -178,11 +175,6 @@ export default function GameBoard({ onReset }: GameBoardProps) {
           )}
 
           <GuessRankings guesses={guesses} />
-
-          <WordList
-            targetWord={targetWord}
-            guessedWords={guesses.map(g => g.word)}
-          />
         </>
       ) : (
         <div className="victory-screen">
