@@ -1,32 +1,31 @@
 /**
- * ModelLoader component - displays loading screen while AI model loads
+ * ModelLoader component - checks API server is reachable before starting
  */
 
 import { useState, useEffect } from "react";
-import { loadModel } from "../utils/gameLogic";
+import { checkApiHealth } from "../utils/gameLogic";
 
 interface ModelLoaderProps {
   onLoaded: () => void;
 }
 
 export default function ModelLoader({ onLoaded }: ModelLoaderProps) {
-  const [loadingStatus, setLoadingStatus] = useState<string>("Initializing...");
+  const [loadingStatus, setLoadingStatus] = useState<string>("Connecting to server...");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
       try {
-        setLoadingStatus("Loading AI model...");
-        await loadModel();
-        setLoadingStatus("Model loaded successfully!");
+        setLoadingStatus("Connecting to server...");
+        await checkApiHealth();
+        setLoadingStatus("Connected!");
 
-        // Small delay before transitioning
         setTimeout(() => {
           onLoaded();
-        }, 500);
+        }, 300);
       } catch (err) {
-        console.error("Error loading model:", err);
-        setError("Failed to load AI model. Please refresh the page.");
+        console.error("Error connecting to server:", err);
+        setError("Cannot reach the API server. Make sure embeddings_50k.bin exists (run: python3 precompute_embeddings.py)");
       }
     };
 
@@ -45,11 +44,6 @@ export default function ModelLoader({ onLoaded }: ModelLoaderProps) {
               <div className="spinner-large"></div>
             </div>
             <p className="loading-text">{loadingStatus}</p>
-            <p className="loading-subtext">
-              Loading Universal Sentence Encoder...
-              <br />
-              This may take a moment on first load.
-            </p>
           </>
         ) : (
           <>
