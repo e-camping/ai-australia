@@ -25,7 +25,7 @@ export default function Instructions({ onStart }: InstructionsProps) {
           <div className="feedback-item hot">
             <span className="emoji">🔥</span>
             <div>
-              <strong>Score &gt; 800</strong>
+              <strong>Score &gt; 860</strong>
               <p>Very similar meaning — you're on fire!</p>
             </div>
           </div>
@@ -33,7 +33,7 @@ export default function Instructions({ onStart }: InstructionsProps) {
           <div className="feedback-item warm">
             <span className="emoji">🌤</span>
             <div>
-              <strong>Score 650 – 800</strong>
+              <strong>Score 680 – 860</strong>
               <p>Related meaning — getting warmer</p>
             </div>
           </div>
@@ -41,7 +41,7 @@ export default function Instructions({ onStart }: InstructionsProps) {
           <div className="feedback-item cold">
             <span className="emoji">🧊</span>
             <div>
-              <strong>Score 450 – 650</strong>
+              <strong>Score 530 – 680</strong>
               <p>Loosely connected — getting cooler</p>
             </div>
           </div>
@@ -49,7 +49,7 @@ export default function Instructions({ onStart }: InstructionsProps) {
           <div className="feedback-item ice-cold">
             <span className="emoji">❄️</span>
             <div>
-              <strong>Score &lt; 450</strong>
+              <strong>Score &lt; 530</strong>
               <p>Very different meaning — ice cold!</p>
             </div>
           </div>
@@ -66,10 +66,10 @@ export default function Instructions({ onStart }: InstructionsProps) {
             <strong>Example:</strong> If the target is "ocean":
           </p>
           <ul className="example-list">
-            <li><strong>950</strong> — "sea" (nearly identical)</li>
-            <li><strong>820</strong> — "wave" (closely related)</li>
-            <li><strong>690</strong> — "water" (somewhat related)</li>
-            <li><strong>280</strong> — "forest" (unrelated)</li>
+            <li><strong>983</strong> — "sea" (nearly identical)</li>
+            <li><strong>643</strong> — "water" (loosely connected)</li>
+            <li><strong>258</strong> — "forest" (very different)</li>
+            <li><strong>91</strong> — "mathematics" (unrelated)</li>
           </ul>
         </div>
 

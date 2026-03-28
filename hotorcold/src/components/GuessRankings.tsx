@@ -9,10 +9,10 @@ interface GuessRankingsProps {
 }
 
 function getScoreClass(score: number): string {
-  if (score > 900) return "rank-top";
-  if (score > 800) return "rank-hot";
-  if (score > 650) return "rank-warm";
-  if (score > 450) return "rank-cool";
+  if (score > 970) return "rank-top";
+  if (score > 860) return "rank-hot";
+  if (score > 680) return "rank-warm";
+  if (score > 530) return "rank-cool";
   return "rank-cold";
 }
 

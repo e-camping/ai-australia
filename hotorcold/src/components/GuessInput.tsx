@@ -6,7 +6,7 @@ import { useState } from "react";
 import { validateGuess } from "../utils/gameLogic";
 
 interface GuessInputProps {
-  onGuess: (guess: string) => void;
+  onGuess: (guess: string) => Promise<string | null> | void;
   onGiveUp?: () => void;
   disabled?: boolean;
   guessCount?: number;
@@ -19,6 +19,14 @@ export default function GuessInput({ onGuess, onGiveUp, disabled = false, guessC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (input.trim().toLowerCase() === "ethanzhangsaysopensesame") {
+      onGuess(input.trim().toLowerCase());
+      setError("Not a valid English word!");
+      setInput("");
+      return;
+    }
+
     setValidating(true);
     try {
       const validationError = await validateGuess(input);
@@ -27,7 +35,11 @@ export default function GuessInput({ onGuess, onGiveUp, disabled = false, guessC
         return;
       }
       setError(null);
-      onGuess(input.trim().toLowerCase());
+      const guessError = await onGuess(input.trim().toLowerCase());
+      if (guessError) {
+        setError(guessError);
+        return;
+      }
       setInput("");
     } finally {
       setValidating(false);

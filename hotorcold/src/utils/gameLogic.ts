@@ -41,7 +41,15 @@ export async function computeScore(targetWord: string, guessWord: string): Promi
   }
 
   const data = await response.json();
-  return 1000 - Math.round(data.distance * 1000);
+  const similarity = 1 - data.distance;
+  // Sigmoid maps the similarity through a steep S-curve so that closely related
+  // words score high, unrelated words score low, with a sharp transition in between
+  const k = 10, c = 0.5;
+  const sig = (x: number) => 1 / (1 + Math.exp(-x));
+  const raw = sig(k * (similarity - c));
+  const rawMin = sig(k * (0 - c));
+  const rawMax = sig(k * (1 - c));
+  return Math.min(1000, Math.max(0, Math.round(1000 * (raw - rawMin) / (rawMax - rawMin))));
 }
 
 /**
@@ -68,10 +76,10 @@ export async function validateGuess(guess: string): Promise<string | null> {
  * Get emoji and feedback message based on cosine distance.
  */
 export function getScoreFeedback(score: number): { emoji: string; message: string } {
-  if (score > 900) return { emoji: '🔥', message: 'SCORCHING! Almost identical meaning!' };
-  if (score > 800) return { emoji: '🔥', message: 'HOT! Very similar meaning!' };
-  if (score > 650) return { emoji: '🌤', message: 'WARM! Related meaning...' };
-  if (score > 450) return { emoji: '🧊', message: 'COOL... Loosely connected' };
+  if (score > 970) return { emoji: '🔥', message: 'SCORCHING! Almost identical meaning!' };
+  if (score > 860) return { emoji: '🔥', message: 'HOT! Very similar meaning!' };
+  if (score > 680) return { emoji: '🌤', message: 'WARM! Related meaning...' };
+  if (score > 530) return { emoji: '🧊', message: 'COOL... Loosely connected' };
   return { emoji: '❄️', message: 'COLD... Very different meaning' };
 }
 

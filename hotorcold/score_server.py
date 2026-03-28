@@ -47,10 +47,8 @@ class ScoreHandler(BaseHTTPRequestHandler):
                 similarity = float(np.dot(t, g))
                 distance = round(max(0.0, 1.0 - similarity), 4)
 
-                print(f'[score] {target!r} vs {guess!r} → distance={distance}', flush=True)
                 self.send_json(200, {'distance': distance})
             except Exception as e:
-                print(f'[score] ERROR: {e}', flush=True)
                 self.send_json(500, {'error': str(e)})
         else:
             self.send_json(404, {'error': 'Not found'})

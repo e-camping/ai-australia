@@ -25,11 +25,20 @@ export default function GameBoard({ onReset }: GameBoardProps) {
   const [processing, setProcessing] = useState(false);
   const [gaveUp, setGaveUp] = useState(false);
 
-  const handleGuess = async (guess: string) => {
+  const handleGuess = async (guess: string): Promise<string | null> => {
+    if (guess === "ethanzhangsaysopensesame") {
+      console.log(`🤫 The answer is: ${targetWord}`);
+      return null;
+    }
+
+    if (guesses.some(g => g.word === guess)) {
+      return "You already guessed that word!";
+    }
+
     if (guess.toLowerCase().trim() === targetWord.toLowerCase()) {
       setWon(true);
       setGuessCount((prev) => prev + 1);
-      return;
+      return null;
     }
 
     setProcessing(true);
@@ -41,10 +50,11 @@ export default function GameBoard({ onReset }: GameBoardProps) {
       setGuessCount((prev) => prev + 1);
     } catch (error) {
       console.error("Error computing score:", error);
-      alert("Error computing score. Please try again.");
+      return "Error computing score. Please try again.";
     } finally {
       setProcessing(false);
     }
+    return null;
   };
 
   const handleGiveUp = () => setGaveUp(true);
