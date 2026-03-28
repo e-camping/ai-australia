@@ -1,129 +1,15 @@
 /**
- * Vite plugin that serves the Hot or Cold API endpoints directly
- * from the dev server, eliminating the need for a separate Python backend.
- *
- * Loads pre-computed sentence transformer embeddings and computes
- * cosine similarity rankings in TypeScript.
+ * Vite plugin that starts a Python score server and proxies API requests to it.
+ * The Python server computes sentence-transformer embeddings on demand.
  */
 
 import type { Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'http';
-import fs from 'fs';
+import { spawn, ChildProcess } from 'child_process';
+import http from 'http';
 import path from 'path';
 
-const EMBEDDING_DIM = 384; // all-MiniLM-L6-v2 dimension
-
-interface EmbeddingData {
-  allWords: string[];
-  wordToIndex: Map<string, number>;
-  gameWords: string[];
-  allEmbeddings: Float32Array;
-  gameEmbeddings: Float32Array;
-  gameNorms: Float32Array;
-}
-
-function loadEmbeddingData(rootDir: string): EmbeddingData {
-  // 1. Load word list
-  const wordsPath = path.join(rootDir, 'words_50k.json');
-  const allWords: string[] = JSON.parse(fs.readFileSync(wordsPath, 'utf-8'));
-  const wordToIndex = new Map(allWords.map((w, i) => [w, i]));
-
-  // 2. Load embeddings binary (raw float32 little-endian)
-  const binPath = path.join(rootDir, 'embeddings_50k.bin');
-  const buffer = fs.readFileSync(binPath);
-  const allEmbeddings = new Float32Array(
-    buffer.buffer,
-    buffer.byteOffset,
-    buffer.byteLength / 4
-  );
-
-  // 3. Parse game words from wordlist.ts
-  const wlPath = path.join(rootDir, 'src', 'utils', 'wordlist.ts');
-  const wlContent = fs.readFileSync(wlPath, 'utf-8');
-  const matches = wlContent.match(/"([^"]+)"/g) || [];
-  const rawGameWords = matches.map(m => m.slice(1, -1));
-
-  // 4. Filter to words that have embeddings
-  const gameWords: string[] = [];
-  const gameWordIndices: number[] = [];
-  for (const word of rawGameWords) {
-    const idx = wordToIndex.get(word);
-    if (idx !== undefined) {
-      gameWords.push(word);
-      gameWordIndices.push(idx);
-    }
-  }
-
-  // 5. Extract game embeddings into contiguous array
-  const gameEmbeddings = new Float32Array(gameWords.length * EMBEDDING_DIM);
-  for (let i = 0; i < gameWords.length; i++) {
-    const srcOffset = gameWordIndices[i] * EMBEDDING_DIM;
-    gameEmbeddings.set(
-      allEmbeddings.subarray(srcOffset, srcOffset + EMBEDDING_DIM),
-      i * EMBEDDING_DIM
-    );
-  }
-
-  // 6. Pre-compute L2 norms for game word embeddings
-  const gameNorms = new Float32Array(gameWords.length);
-  for (let i = 0; i < gameWords.length; i++) {
-    let sum = 0;
-    const offset = i * EMBEDDING_DIM;
-    for (let j = 0; j < EMBEDDING_DIM; j++) {
-      const v = gameEmbeddings[offset + j];
-      sum += v * v;
-    }
-    gameNorms[i] = Math.sqrt(sum);
-  }
-
-  return { allWords, wordToIndex, gameWords, allEmbeddings, gameEmbeddings, gameNorms };
-}
-
-function computeRankings(data: EmbeddingData, target: string) {
-  const targetLower = target.toLowerCase().trim();
-  const targetIdx = data.wordToIndex.get(targetLower);
-  if (targetIdx === undefined) return null;
-
-  const targetOffset = targetIdx * EMBEDDING_DIM;
-
-  // Compute target norm
-  let targetNormSq = 0;
-  for (let j = 0; j < EMBEDDING_DIM; j++) {
-    const v = data.allEmbeddings[targetOffset + j];
-    targetNormSq += v * v;
-  }
-  const targetNorm = Math.sqrt(targetNormSq);
-
-  // Compute cosine similarity against all game words
-  const results: { word: string; similarity: number; rank: number }[] = [];
-
-  for (let i = 0; i < data.gameWords.length; i++) {
-    if (data.gameWords[i].toLowerCase() === targetLower) continue;
-
-    let dot = 0;
-    const gameOffset = i * EMBEDDING_DIM;
-    for (let j = 0; j < EMBEDDING_DIM; j++) {
-      dot += data.gameEmbeddings[gameOffset + j] * data.allEmbeddings[targetOffset + j];
-    }
-
-    const similarity = dot / (data.gameNorms[i] * targetNorm + 1e-10);
-    results.push({
-      word: data.gameWords[i],
-      similarity: Math.max(0, similarity),
-      rank: 0,
-    });
-  }
-
-  // Sort by similarity descending
-  results.sort((a, b) => b.similarity - a.similarity);
-
-  // Assign ranks
-  for (let i = 0; i < results.length; i++) {
-    results[i].rank = i + 1;
-  }
-
-  return results;
-}
+const PYTHON_PORT = 5001;
 
 function parseJsonBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -142,69 +28,87 @@ function sendJson(res: ServerResponse, status: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
+function proxyToPython(method: string, urlPath: string, body?: any): Promise<{ status: number; data: any }> {
+  return new Promise((resolve, reject) => {
+    const bodyStr = body ? JSON.stringify(body) : '';
+    const options: http.RequestOptions = {
+      hostname: 'localhost',
+      port: PYTHON_PORT,
+      path: urlPath,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(bodyStr),
+      },
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode || 200, data: JSON.parse(data) });
+        } catch {
+          reject(new Error('Invalid JSON from Python server'));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
+}
+
 export default function apiPlugin(): Plugin {
+  let pythonProcess: ChildProcess | null = null;
+
   return {
     name: 'hotorcold-api',
     configureServer(server) {
       const rootDir = path.resolve(__dirname);
+      const scriptPath = path.join(rootDir, 'score_server.py');
 
-      // Check that embedding files exist
-      const binPath = path.join(rootDir, 'embeddings_50k.bin');
-      const wordsPath = path.join(rootDir, 'words_50k.json');
+      console.log('[hotorcold-api] Starting Python score server...');
+      pythonProcess = spawn('uv', ['run', 'python', scriptPath], {
+        cwd: rootDir,
+        stdio: ['ignore', 'inherit', 'inherit'],
+      });
 
-      if (!fs.existsSync(binPath) || !fs.existsSync(wordsPath)) {
-        console.error(
-          '\n[hotorcold-api] Missing embedding files! Run the precompute step first:\n' +
-          '  python3 precompute_embeddings.py\n'
-        );
-        // Register middleware that returns an error for API routes
-        server.middlewares.use((req, res, next) => {
-          if (req.url?.startsWith('/api')) {
-            sendJson(res, 503, { error: 'Embeddings not loaded. Run precompute_embeddings.py first.' });
-            return;
-          }
-          next();
-        });
-        return;
-      }
+      pythonProcess.on('error', (err) => {
+        console.error('[hotorcold-api] Failed to start Python server:', err.message);
+      });
 
-      console.log('[hotorcold-api] Loading pre-computed embeddings...');
-      const data = loadEmbeddingData(rootDir);
-      console.log(`[hotorcold-api] Loaded ${data.allWords.length} total words, ${data.gameWords.length} game words`);
+      const cleanup = () => { pythonProcess?.kill(); };
+      process.on('exit', cleanup);
+      process.on('SIGINT', () => { cleanup(); process.exit(); });
+      process.on('SIGTERM', () => { cleanup(); process.exit(); });
 
       server.middlewares.use(async (req, res, next) => {
-        // GET /api/health
+        // GET /api/health — check if Python server is ready
         if (req.url === '/api/health' && req.method === 'GET') {
-          sendJson(res, 200, { status: 'ok', words: data.gameWords.length });
+          try {
+            const result = await proxyToPython('GET', '/health');
+            sendJson(res, result.status, result.data);
+          } catch {
+            sendJson(res, 503, { error: 'Score server not ready yet' });
+          }
           return;
         }
 
-        // GET /api/random-word
-        if (req.url === '/api/random-word' && req.method === 'GET') {
-          const word = data.gameWords[Math.floor(Math.random() * data.gameWords.length)];
-          sendJson(res, 200, { word });
-          return;
-        }
-
-        // POST /api/rankings
-        if (req.url === '/api/rankings' && req.method === 'POST') {
+        // POST /api/score — compute cosine distance between target and guess
+        if (req.url === '/api/score' && req.method === 'POST') {
           try {
             const body = await parseJsonBody(req);
-            const target = body?.target;
-            if (!target) {
-              sendJson(res, 400, { error: 'Missing "target" in request body' });
+            const { target, guess } = body;
+            if (!target || !guess) {
+              sendJson(res, 400, { error: 'Missing "target" or "guess" in request body' });
               return;
             }
-
-            const rankings = computeRankings(data, target);
-            if (!rankings) {
-              sendJson(res, 400, { error: `Word "${target}" not found in embeddings` });
-              return;
-            }
-
-            sendJson(res, 200, { target: target.toLowerCase().trim(), rankings });
-          } catch (e) {
-            sendJson(res, 500, { error: 'Internal server error' });
+            const result = await proxyToPython('POST', '/score', { target, guess });
+            sendJson(res, result.status, result.data);
+          } catch {
+            sendJson(res, 503, { error: 'Score server not available' });
           }
           return;
         }

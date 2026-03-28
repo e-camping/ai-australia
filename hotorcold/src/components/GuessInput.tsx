@@ -15,29 +15,31 @@ interface GuessInputProps {
 export default function GuessInput({ onGuess, onGiveUp, disabled = false, guessCount = 0 }: GuessInputProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validate the guess
-    const validationError = validateGuess(input);
-    if (validationError) {
-      setError(validationError);
-      return;
+    setValidating(true);
+    try {
+      const validationError = await validateGuess(input);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+      setError(null);
+      onGuess(input.trim().toLowerCase());
+      setInput("");
+    } finally {
+      setValidating(false);
     }
-
-    // Clear error and submit guess
-    setError(null);
-    onGuess(input.trim().toLowerCase());
-    setInput("");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
-    if (error) {
-      setError(null); // Clear error when user starts typing
-    }
+    if (error) setError(null);
   };
+
+  const isDisabled = disabled || validating;
 
   return (
     <div className="guess-input-container">
@@ -48,15 +50,15 @@ export default function GuessInput({ onGuess, onGiveUp, disabled = false, guessC
             value={input}
             onChange={handleInputChange}
             placeholder="Enter your guess..."
-            disabled={disabled}
+            disabled={isDisabled}
             className={error ? "error" : ""}
             autoFocus
           />
-          <button type="submit" disabled={disabled || !input.trim()}>
-            Guess
+          <button type="submit" disabled={isDisabled || !input.trim()}>
+            {validating ? "Checking..." : "Guess"}
           </button>
           {guessCount >= 10 && onGiveUp && (
-            <button type="button" className="give-up-button" onClick={onGiveUp}>
+            <button type="button" className="give-up-button" onClick={onGiveUp} disabled={isDisabled}>
               Give Up
             </button>
           )}

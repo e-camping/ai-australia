@@ -1,15 +1,13 @@
 /**
- * GameBoard component - main game interface with ranking system
+ * GameBoard component - main game interface with distance-based scoring
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   getRandomWord,
-  processGuess,
-  computeWordRankings,
-  getRankFeedback,
+  computeScore,
+  getScoreFeedback,
   GuessData,
-  WordRanking
 } from "../utils/gameLogic";
 import GuessInput from "./GuessInput";
 import GuessRankings from "./GuessRankings";
@@ -20,8 +18,6 @@ interface GameBoardProps {
 
 export default function GameBoard({ onReset }: GameBoardProps) {
   const [targetWord] = useState(() => getRandomWord());
-  const [rankings, setRankings] = useState<WordRanking[]>([]);
-  const [rankingsLoaded, setRankingsLoaded] = useState(false);
   const [guesses, setGuesses] = useState<GuessData[]>([]);
   const [currentGuess, setCurrentGuess] = useState<GuessData | null>(null);
   const [won, setWon] = useState(false);
@@ -29,79 +25,36 @@ export default function GameBoard({ onReset }: GameBoardProps) {
   const [processing, setProcessing] = useState(false);
   const [gaveUp, setGaveUp] = useState(false);
 
-  // Compute rankings when component mounts
-  useEffect(() => {
-    const computeRankings = async () => {
-      try {
-        console.log(`Computing rankings for target word: ${targetWord}`);
-        const wordRankings = await computeWordRankings(targetWord);
-        setRankings(wordRankings);
-        setRankingsLoaded(true);
-        console.log(`Rankings loaded: ${wordRankings.length} words ranked`);
-      } catch (error) {
-        console.error("Error computing rankings:", error);
-        alert("Error initializing game. Please refresh the page.");
-      }
-    };
-
-    computeRankings();
-  }, [targetWord]);
-
-  const handleGuess = (guess: string) => {
-    // Check if the guess is correct (exact match)
+  const handleGuess = async (guess: string) => {
     if (guess.toLowerCase().trim() === targetWord.toLowerCase()) {
       setWon(true);
       setGuessCount((prev) => prev + 1);
       return;
     }
 
-    // Process the guess (determine rank)
     setProcessing(true);
     try {
-      const guessData = processGuess(guess, rankings);
+      const score = await computeScore(targetWord, guess);
+      const guessData: GuessData = { word: guess, score };
       setGuesses((prev) => [...prev, guessData]);
       setCurrentGuess(guessData);
       setGuessCount((prev) => prev + 1);
     } catch (error) {
-      console.error("Error processing guess:", error);
-      alert("Error processing your guess. Please try again.");
+      console.error("Error computing score:", error);
+      alert("Error computing score. Please try again.");
     } finally {
       setProcessing(false);
     }
   };
 
-  const handleGiveUp = () => {
-    setGaveUp(true);
-  };
-
-  const handlePlayAgain = () => {
-    onReset();
-  };
-
-  // Show loading screen while rankings are being computed
-  if (!rankingsLoaded) {
-    return (
-      <div className="game-board">
-        <div className="game-header">
-          <h1>🎮 HOT OR COLD</h1>
-          <p className="game-subtitle">Ranking System</p>
-        </div>
-        <div className="processing-indicator">
-          <div className="spinner"></div>
-          <p>🧠 Computing word rankings...</p>
-          <p className="loading-subtext">
-            Fetching semantic similarity rankings from server...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const handleGiveUp = () => setGaveUp(true);
+  const handlePlayAgain = () => onReset();
 
   return (
     <div className="game-board">
       <div className="game-header">
         <h1>🎮 HOT OR COLD</h1>
-        <p className="game-subtitle">Ranking System</p>
+        <p className="game-subtitle">Semantic Distance</p>
         <button className="reset-button" onClick={handlePlayAgain}>
           New Game
         </button>
@@ -121,7 +74,6 @@ export default function GameBoard({ onReset }: GameBoardProps) {
               Play Again
             </button>
           </div>
-
           {guesses.length > 0 && (
             <div className="final-rankings">
               <h3>Your Journey:</h3>
@@ -140,10 +92,6 @@ export default function GameBoard({ onReset }: GameBoardProps) {
               <span className="label">Guess Count:</span>
               <span className="value">{guessCount}</span>
             </div>
-            <div className="info-card">
-              <span className="label">Total Words:</span>
-              <span className="value">{rankings.length}</span>
-            </div>
           </div>
 
           <GuessInput onGuess={handleGuess} onGiveUp={handleGiveUp} disabled={won || processing} guessCount={guessCount} />
@@ -151,20 +99,21 @@ export default function GameBoard({ onReset }: GameBoardProps) {
           {processing && (
             <div className="processing-indicator">
               <div className="spinner"></div>
-              <p>Finding your rank...</p>
+              <p>Computing score...</p>
             </div>
           )}
 
           {currentGuess && !processing && (
             <div className="current-feedback rank-feedback">
               <div className="rank-display">
-                <div className="rank-emoji">{getRankFeedback(currentGuess.rank, currentGuess.totalWords).emoji}</div>
+                <div className="rank-emoji">{getScoreFeedback(currentGuess.score).emoji}</div>
                 <div className="rank-info">
                   <div className="rank-number">
-                    Rank: <strong>#{currentGuess.rank}</strong> / {currentGuess.totalWords}
+                    Score: <strong>{currentGuess.score}</strong>
+                    <span className="score-hint"> / 1000 (higher = closer)</span>
                   </div>
                   <div className="rank-message">
-                    {getRankFeedback(currentGuess.rank, currentGuess.totalWords).message}
+                    {getScoreFeedback(currentGuess.score).message}
                   </div>
                   <div className="rank-word">
                     Your guess: <strong>{currentGuess.word}</strong>
@@ -190,7 +139,6 @@ export default function GameBoard({ onReset }: GameBoardProps) {
               Play Again
             </button>
           </div>
-
           {guesses.length > 0 && (
             <div className="final-rankings">
               <h3>Your Journey:</h3>

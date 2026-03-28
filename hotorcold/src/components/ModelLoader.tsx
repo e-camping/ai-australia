@@ -14,22 +14,26 @@ export default function ModelLoader({ onLoaded }: ModelLoaderProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
-      try {
-        setLoadingStatus("Connecting to server...");
-        await checkApiHealth();
-        setLoadingStatus("Connected!");
-
-        setTimeout(() => {
-          onLoaded();
-        }, 300);
-      } catch (err) {
-        console.error("Error connecting to server:", err);
-        setError("Cannot reach the API server. Make sure embeddings_50k.bin exists (run: python3 precompute_embeddings.py)");
+      setLoadingStatus("Loading AI model...");
+      for (let i = 0; i < 60; i++) {
+        if (cancelled) return;
+        try {
+          await checkApiHealth();
+          if (!cancelled) {
+            setLoadingStatus("Ready!");
+            setTimeout(() => { if (!cancelled) onLoaded(); }, 300);
+          }
+          return;
+        } catch {}
+        await new Promise(r => setTimeout(r, 1000));
       }
+      if (!cancelled) setError("Could not connect to the score server. Make sure the dev server is running.");
     };
 
     load();
+    return () => { cancelled = true; };
   }, [onLoaded]);
 
   return (

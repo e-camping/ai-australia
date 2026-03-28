@@ -1,25 +1,16 @@
 /**
- * Game logic utilities for the Hot or Cold word guessing game
- * Uses pre-computed sentence transformer embeddings via API
+ * Game logic utilities for the Hot or Cold word guessing game.
+ * Scores are cosine distances: 0.0 = identical meaning, 1.0 = completely different.
  */
 
 import { WORD_LIST as IMPORTED_WORD_LIST } from './wordlist';
 
 export const WORD_LIST = IMPORTED_WORD_LIST;
 
-// Interface for word rankings
-export interface WordRanking {
-  word: string;
-  similarity: number;
-  rank: number; // 1 = most similar, higher = less similar
-}
-
-// Interface for guess data
+// Interface for a single guess with its score
 export interface GuessData {
   word: string;
-  rank: number;
-  totalWords: number;
-  similarity: number;
+  score: number; // 0–1000: 1000 = identical meaning, 0 = completely different
 }
 
 const API_BASE = '/api';
@@ -29,106 +20,63 @@ const API_BASE = '/api';
  */
 export async function checkApiHealth(): Promise<boolean> {
   const response = await fetch(`${API_BASE}/health`);
-  if (!response.ok) {
-    throw new Error('API server not reachable');
-  }
+  if (!response.ok) throw new Error('API server not reachable');
   return true;
 }
 
 /**
- * Compute rankings for all words compared to a target word via the API.
- * Returns an array of WordRanking objects sorted by similarity (most similar first).
+ * Compute cosine distance between a target word and a guess via the API.
+ * Returns a value between 0.0 (identical meaning) and 1.0 (completely different).
  */
-export async function computeWordRankings(targetWord: string): Promise<WordRanking[]> {
-  const response = await fetch(`${API_BASE}/rankings`, {
+export async function computeScore(targetWord: string, guessWord: string): Promise<number> {
+  const response = await fetch(`${API_BASE}/score`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ target: targetWord.toLowerCase() })
+    body: JSON.stringify({ target: targetWord.toLowerCase(), guess: guessWord.toLowerCase() }),
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to compute rankings');
+    throw new Error(error.error || 'Failed to compute score');
   }
 
   const data = await response.json();
-  return data.rankings as WordRanking[];
+  return 1000 - Math.round(data.distance * 1000);
 }
 
 /**
- * Find the rank of a guessed word in the pre-computed rankings.
+ * Validate a guess — checks basic format, then confirms it's a real English word
+ * via the Free Dictionary API. Returns an error message or null if valid.
  */
-export function processGuess(
-  guess: string,
-  rankings: WordRanking[]
-): GuessData {
-  const guessLower = guess.toLowerCase().trim();
+export async function validateGuess(guess: string): Promise<string | null> {
+  if (!guess || guess.trim() === '') return 'Guess cannot be empty!';
+  if (!/^[a-zA-Z]+$/.test(guess.trim())) return 'Guess must contain only letters!';
+  if (guess.trim().length < 2) return 'Guess must be at least 2 letters long!';
 
-  const ranking = rankings.find(r => r.word.toLowerCase() === guessLower);
-
-  if (!ranking) {
-    throw new Error("NOT_IN_WORD_LIST");
+  const word = guess.trim().toLowerCase();
+  try {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+    if (!response.ok) return 'Not a valid English word!';
+    return null;
+  } catch {
+    // If dictionary API is unreachable, allow the guess through
+    return null;
   }
-
-  return {
-    word: guessLower,
-    rank: ranking.rank,
-    totalWords: rankings.length,
-    similarity: ranking.similarity
-  };
 }
 
 /**
- * Get emoji and feedback message based on rank.
+ * Get emoji and feedback message based on cosine distance.
  */
-export function getRankFeedback(rank: number, totalWords: number): { emoji: string; message: string } {
-  const percentile = (rank / totalWords) * 100;
-
-  if (rank === 1) {
-    return { emoji: "🔥", message: "INCREDIBLE! You found the #1 closest word!" };
-  } else if (rank <= 3) {
-    return { emoji: "🔥", message: "SO HOT! You're in the top 3!" };
-  } else if (percentile <= 20) {
-    return { emoji: "🔥", message: "HOT! Top 20%!" };
-  } else if (percentile <= 40) {
-    return { emoji: "🌤", message: "WARM! Getting closer..." };
-  } else if (percentile <= 60) {
-    return { emoji: "🧊", message: "COOL... Keep trying" };
-  } else if (percentile <= 80) {
-    return { emoji: "❄️", message: "COLD... Not quite there" };
-  } else {
-    return { emoji: "❄️", message: "ICE COLD... Very different meaning" };
-  }
+export function getScoreFeedback(score: number): { emoji: string; message: string } {
+  if (score > 900) return { emoji: '🔥', message: 'SCORCHING! Almost identical meaning!' };
+  if (score > 800) return { emoji: '🔥', message: 'HOT! Very similar meaning!' };
+  if (score > 650) return { emoji: '🌤', message: 'WARM! Related meaning...' };
+  if (score > 450) return { emoji: '🧊', message: 'COOL... Loosely connected' };
+  return { emoji: '❄️', message: 'COLD... Very different meaning' };
 }
 
 /**
- * Validate a guess - must be alphabetic and not empty.
- */
-export function validateGuess(guess: string): string | null {
-  if (!guess || guess.trim() === "") {
-    return "Guess cannot be empty!";
-  }
-
-  if (!/^[a-zA-Z\s]+$/.test(guess)) {
-    return "Guess must contain only letters (no numbers or symbols)!";
-  }
-
-  if (guess.trim().length < 2) {
-    return "Guess must be at least 2 letters long!";
-  }
-
-  const guessLower = guess.toLowerCase().trim();
-  const isInWordList = WORD_LIST.some(word => word.toLowerCase() === guessLower);
-
-  if (!isInWordList) {
-    return "Not in word list!";
-  }
-
-  return null;
-}
-
-/**
- * Get a random word from the word list.
+ * Get a random word from the word list to use as the target.
  */
 export function getRandomWord(): string {
   return WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];

@@ -3,6 +3,8 @@ name = "hotorcold"
 version = "1.0.0"
 requires-python = ">=3.9"
 dependencies = [
-    "numpy",
+    "numpy<2",
     "sentence-transformers",
+    "torch==2.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "torch>=2.0.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
