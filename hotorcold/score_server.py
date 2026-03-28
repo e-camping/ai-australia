@@ -41,13 +41,16 @@ class ScoreHandler(BaseHTTPRequestHandler):
                 target = str(body['target']).lower().strip()
                 guess = str(body['guess']).lower().strip()
 
-                # normalize_embeddings=True means dot product == cosine similarity
-                embeddings = model.encode([target, guess], normalize_embeddings=True)
-                similarity = float(np.dot(embeddings[0], embeddings[1]))
+                embeddings = model.encode([target, guess])
+                t = embeddings[0] / (np.linalg.norm(embeddings[0]) + 1e-10)
+                g = embeddings[1] / (np.linalg.norm(embeddings[1]) + 1e-10)
+                similarity = float(np.dot(t, g))
                 distance = round(max(0.0, 1.0 - similarity), 4)
 
+                print(f'[score] {target!r} vs {guess!r} → distance={distance}', flush=True)
                 self.send_json(200, {'distance': distance})
             except Exception as e:
+                print(f'[score] ERROR: {e}', flush=True)
                 self.send_json(500, {'error': str(e)})
         else:
             self.send_json(404, {'error': 'Not found'})
