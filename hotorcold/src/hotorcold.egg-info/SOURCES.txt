@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+src/hotorcold.egg-info/PKG-INFO
+src/hotorcold.egg-info/SOURCES.txt
+src/hotorcold.egg-info/dependency_links.txt
+src/hotorcold.egg-info/requires.txt
+src/hotorcold.egg-info/top_level.txt
