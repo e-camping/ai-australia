@@ -36,8 +36,9 @@ export async function computeScore(targetWord: string, guessWord: string): Promi
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to compute score');
+    let msg = 'Failed to compute score';
+    try { msg = (await response.json()).error || msg; } catch {}
+    throw new Error(msg);
   }
 
   const data = await response.json();

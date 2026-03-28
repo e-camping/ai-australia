@@ -5,7 +5,7 @@
 
 import type { Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, execSync, ChildProcess } from 'child_process';
 import http from 'http';
 import path from 'path';
 
@@ -68,6 +68,11 @@ export default function apiPlugin(): Plugin {
     configureServer(server) {
       const rootDir = path.resolve(__dirname);
       const scriptPath = path.join(rootDir, 'score_server.py');
+
+      // Kill any leftover process on port 5001 from a previous run
+      try {
+        execSync('lsof -ti:5001 | xargs kill -9', { stdio: 'ignore' });
+      } catch {}
 
       console.log('[hotorcold-api] Starting Python score server...');
       pythonProcess = spawn('uv', ['run', 'python', scriptPath], {
